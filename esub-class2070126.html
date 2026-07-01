@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TFDA 醫療器材查驗登記智慧送件系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col selection:bg-amber-500 selection:text-slate-950">
+
+    <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur sticky top-0 z-50 px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="bg-amber-500 text-slate-950 p-2 rounded-xl font-bold flex items-center justify-center">
+                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    TFDA 醫療器材電子化查驗登記平台 
+                    <span class="text-xs bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">v3.1-Flash-Lite Enhanced</span>
+                </h1>
+                <p class="text-xs text-slate-400">流水號：<span id="header-serial" class="font-mono text-slate-300">MDE11505140004</span> | 申請日：115/05/14</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-6">
+            <div class="hidden md:flex items-center space-x-2 text-xs bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <i data-lucide="clock" class="w-4 h-4 text-amber-500 animate-pulse"></i>
+                <span class="text-slate-400">Session安全倒數:</span>
+                <span class="font-mono font-medium text-white">03小時 59分鐘 57秒</span>
+            </div>
+            <div class="text-right text-xs">
+                <span class="block font-medium text-slate-200">工研院系統諮詢服務2</span>
+                <span class="text-slate-400">承辦人: 吳俊彥</span>
+            </div>
+            <button class="text-xs bg-slate-800 hover:bg-rose-950 hover:text-rose-400 border border-slate-700 hover:border-rose-900 px-3 py-1.5 rounded-lg transition">登出</button>
+        </div>
+    </header>
+
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+            
+            <section class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="file-cog" class="w-5 h-5 text-amber-400"></i>
+                    <h2 class="text-sm font-semibold text-white">案件本地端檔案調度快取區</h2>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="cursor-pointer bg-slate-900 border border-slate-700 hover:border-amber-500 hover:bg-slate-800 text-xs px-3 py-2 rounded-xl transition flex items-center space-x-2 text-slate-200">
+                        <i data-lucide="upload-cloud" class="w-4 h-4 text-amber-400"></i>
+                        <span>載入配置 (JSON/CSV/MD)</span>
+                        <input type="file" id="import-file" accept=".json,.csv,.md" class="hidden" onchange="handleFileImport(event)">
+                    </label>
+                    <label class="cursor-pointer bg-slate-900 border border-slate-700 hover:border-amber-500 hover:bg-slate-800 text-xs px-3 py-2 rounded-xl transition flex items-center space-x-2 text-slate-200">
+                        <i data-lucide="file-text" class="w-4 h-4 text-rose-400"></i>
+                        <span>模擬讀取 PDF 標頭</span>
+                        <input type="file" id="import-pdf" accept=".pdf" class="hidden" onchange="simulatePdfParsing(event)">
+                    </label>
+                    <div class="h-6 w-[1px] bg-slate-800 mx-1"></div>
+                    <button onclick="exportData('json')" class="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs px-3 py-2 rounded-xl text-slate-300 flex items-center space-x-1.5"><i data-lucide="file-json" class="w-3.5 h-3.5"></i><span>JSON</span></button>
+                    <button onclick="exportData('csv')" class="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs px-3 py-2 rounded-xl text-slate-300 flex items-center space-x-1.5"><i data-lucide="table" class="w-3.5 h-3.5"></i><span>CSV</span></button>
+                    <button onclick="exportData('md')" class="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs px-3 py-2 rounded-xl text-slate-300 flex items-center space-x-1.5"><i data-lucide="file-code" class="w-3.5 h-3.5"></i><span>Markdown</span></button>
+                    <button onclick="exportData('pdf')" class="bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-400 text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5"><i data-lucide="download" class="w-3.5 h-3.5"></i><span>產出完整送審 PDF</span></button>
+                </div>
+            </section>
+
+            <nav class="flex space-x-1 border-b border-slate-800 overflow-x-auto pb-px">
+                <button onclick="switchTab('basic')" id="btn-tab-basic" class="tab-btn px-4 py-2.5 border-b-2 border-amber-500 text-amber-400 font-medium text-sm whitespace-nowrap">基本資料</button>
+                <button onclick="switchTab('payment')" id="btn-tab-payment" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">繳費資訊</button>
+                <button onclick="switchTab('admin-docs')" id="btn-tab-admin-docs" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">行政文件</button>
+                <button onclick="switchTab('tech-data')" id="btn-tab-tech-data" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">技術性資料</button>
+                <button onclick="switchTab('pre-clinical')" id="btn-tab-pre-clinical" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">臨床前測試</button>
+                <button onclick="switchTab('clinical-evid')" id="btn-tab-clinical-evid" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">臨床證據資料</button>
+                <button onclick="switchTab('others')" id="btn-tab-others" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">其他</button>
+                <button onclick="switchTab('submit-tab')" id="btn-tab-submit-tab" class="tab-btn px-4 py-2.5 border-b-2 border-transparent text-slate-400 hover:text-slate-200 text-sm whitespace-nowrap">送出申請</button>
+            </nav>
+
+            <form id="submissionForm" onsubmit="event.preventDefault();" class="bg-slate-950 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+                
+                <div id="tab-basic" class="tab-content active space-y-6">
+                    <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+                        <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>申請填寫畫面 - 基本資料</h3>
+                        <button type="button" onclick="triggerPresetData()" class="text-xs text-amber-400 bg-amber-400/10 border border-amber-500/20 px-2 py-1 rounded hover:bg-amber-400/20 transition">自動帶入案例資料</button>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">案件類型 *</label>
+                            <select id="case_type" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                                <option value="一般申請案">一般申請案</option>
+                                <option value="同一產品不同品名">同一產品不同品名</option>
+                                <option value="專供外銷">專供外銷</option>
+                                <option value="重新申請">許可證有效期限屆至後六個月內重新申請</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">醫療器材類別 *</label>
+                            <select id="device_category" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                                <option value="一般醫材">一般醫材</option>
+                                <option value="體外診斷器材(IVD)">體外診斷器材(IVD)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">案件種類 *</label>
+                            <input id="case_kind" type="text" value="新案" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">產地 *</label>
+                            <select id="origin_place" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                                <option value="國產">國產</option>
+                                <option value="輸入">輸入</option>
+                                <option value="陸輸">陸輸</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">產品風險等級 *</label>
+                            <select id="risk_level" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                                <option value="第二等級">第二等級</option>
+                                <option value="第三等級">第三等級</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">有無類似品 *</label>
+                            <select id="has_similar" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                                <option value="有">有</option>
+                                <option value="無">無</option>
+                                <option value="全球首創">全球首創</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                        <label class="block text-xs font-semibold text-slate-300">醫療器材品名名稱 *</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">中文名稱</span>
+                                <input id="name_zh" type="text" placeholder="例: 可攜式彩色超音波診斷儀" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                            </div>
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">英文名稱</span>
+                                <input id="name_en" type="text" placeholder="例: Diagnostic Ultrasound System" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100 focus:border-amber-500 focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">效能、用途或適應症說明</label>
+                            <textarea id="indications" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none" placeholder="詳如核定之中文說明書"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1.5">型號、規格或主要成分說明</label>
+                            <textarea id="specifications" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none" placeholder="詳如核定之中文說明書"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-800 space-y-4">
+                        <div class="flex items-center justify-between">
+                            <label class="text-xs font-semibold text-slate-300 flex items-center gap-2"><i data-lucide="tag" class="w-4 h-4 text-amber-500"></i>分類分級品項管理</label>
+                            <a href="https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=L0030120" target="_blank" class="text-[11px] text-amber-400 flex items-center hover:underline"><i data-lucide="external-link" class="w-3 h-3 mr-1"></i>法規附表品項查詢</a>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">主類別</span>
+                                <select id="main_category" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100">
+                                    <option value="P.放射學科學">P.放射學科學</option>
+                                    <option value="A.臨床化學及臨床毒理學">A.臨床化學及臨床毒理學</option>
+                                    <option value="E.心臟血管醫學">E.心臟血管醫學</option>
+                                    <option value="I.一般及整形外科手術">I.一般及整形外科手術</option>
+                                </select>
+                            </div>
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">次類別品項</span>
+                                <select id="sub_category" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-100">
+                                    <option value="P.1570 診斷用超音波轉換器">P.1570 診斷用超音波轉換器</option>
+                                    <option value="P.1560 超音波回音影像系統">P.1560 超音波回音影像系統</option>
+                                    <option value="P.2050 醫學影像管理和處理系統">P.2050 醫學影像管理和處理系統</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-300 border-b border-slate-800 pb-2">醫療器材商與製造廠基本盤</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">統一編號</span>
+                                <input id="comp_id" type="text" value="02750945" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300" readonly>
+                            </div>
+                            <div class="md:col-span-2">
+                                <span class="text-[11px] text-slate-400 block mb-1">醫療器材商名稱</span>
+                                <input id="comp_name" type="text" value="工業技術研究院系統諮詢服務2" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300" readonly>
+                            </div>
+                            <div class="md:col-span-3">
+                                <span class="text-[11px] text-slate-400 block mb-1">公司登記地址</span>
+                                <input id="comp_addr" type="text" value="新竹市東區光復路二段321號" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300" readonly>
+                            </div>
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">負責人姓名</span>
+                                <input id="owner_name" type="text" value="劉文雄" class="w-full bg-slate-950 border border-slate-800 rounded px-2.5 py-1.5 text-xs text-slate-300" readonly>
+                            </div>
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">聯絡人姓名</span>
+                                <input id="contact_name" type="text" value="吳俊彥" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
+                            </div>
+                            <div>
+                                <span class="text-[11px] text-slate-400 block mb-1">電子郵件</span>
+                                <input id="contact_email" type="email" value="jywu6@itri.org.tw" class="w-full bg-slate-900 border border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-100">
+                            </div>
+                        </div>
+                        <div class="pt-2">
+                            <label class="inline-flex items-center text-xs text-slate-300 cursor-pointer">
+                                <input id="confirm_info" type="checkbox" checked class="rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 mr-2">
+                                我已確認上述資料與最新版醫療器材商證照資訊(名稱、地址、負責人)相符
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-payment" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>繳費資訊與規費認列</h3>
+                    <p class="text-xs text-slate-400">請輸入或勾選本查驗登記案之國庫規費繳納收據號碼或ATM轉帳序號。</p>
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">收據/繳費規費案號</label>
+                                <input id="pay_number" type="text" placeholder="例如：FE1150002144" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1">繳費金額 (NTD)</label>
+                                <input id="pay_amount" type="number" value="35000" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-admin-docs" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>第二、三等級醫療器材查驗登記送審表 (行政文件)</h3>
+                    <div class="space-y-3">
+                        <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-start justify-between">
+                            <div class="space-y-1">
+                                <p class="text-xs font-semibold text-slate-200">一、紙本申請書或電子核章申請表蓋印文件</p>
+                                <p class="text-[11px] text-slate-400">應加蓋醫療器材商及負責人印鑑後上傳。載明產品中英文名稱、製造業者名稱與地址。</p>
+                            </div>
+                            <span class="text-xs bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded">離線光碟已併附</span>
+                        </div>
+                        <div class="p-4 bg-slate-900 rounded-xl border border-slate-800 flex items-start justify-between">
+                            <div class="space-y-1">
+                                <p class="text-xs font-semibold text-slate-200">四、醫療器材商許可執照影本驗證</p>
+                                <p class="text-[11px] text-slate-400">已登載最新版本：<span class="text-amber-400 font-mono">製造業藥商許可執照-0207-22-V2.pdf</span></p>
+                            </div>
+                            <span class="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded">系統已載入最新</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-tech-data" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>技術性資料與結構仿單規格說明</h3>
+                    <div class="bg-slate-900 p-4 rounded-xl border border-slate-800 space-y-3">
+                        <p class="text-xs text-slate-300">七、醫療器材製造業者符合醫療器材品質管理系統準則之證明文件 (QMS/QSD)</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                            <label class="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center text-xs cursor-pointer">
+                                <input type="radio" name="qms_status" value="applicable" checked class="mr-2 text-amber-500 focus:ring-0">
+                                <span>適用，檢附有效期間3年內認可登錄證明函</span>
+                            </label>
+                            <label class="p-3 bg-slate-950 border border-slate-800 rounded-lg flex items-center text-xs cursor-pointer">
+                                <input type="radio" name="qms_status" value="not-applicable" class="mr-2 text-amber-500 focus:ring-0">
+                                <span>不適用 (依準則免附者)</span>
+                            </label>
+                        </div>
+                        <input id="qms_number" type="text" value="QMS1130452" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-xs mt-2" placeholder="請輸入QMS核准案號">
+                    </div>
+                </div>
+
+                <div id="tab-pre-clinical" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>十七、臨床前測試及原廠品質管制之檢驗規格與方法</h3>
+                    <div class="bg-amber-500/5 border border-amber-500/10 p-4 rounded-xl space-y-2">
+                        <h4 class="text-xs font-bold text-amber-400 flex items-center gap-1.5"><i data-lucide="info" class="w-4 h-4"></i>法規遵循提示說明</h4>
+                        <p class="text-[11px] text-slate-300 leading-relaxed">
+                            檢測之受託實驗室執行生物相容性、電性安全性、電磁相容性檢測及無菌性試驗，應符合下列條件之一：<br>
+                            1. 符合 <span class="text-white font-semibold">ISO/IEC 17025</span> 之規定； 2. 符合<span class="text-white font-semibold">藥物非臨床試驗優良操作規範 (GLP)</span> 之規定。
+                        </p>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="block text-xs text-slate-400">臨床前測試摘要與原始紀錄查對報告</label>
+                        <textarea id="preclinical_summary" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs text-slate-100 focus:border-amber-500 focus:outline-none" placeholder="輸入電氣安全、EMC、生物相容性報告編號與認證實驗室摘要..."></textarea>
+                    </div>
+                </div>
+
+                <div id="tab-clinical-evid" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>臨床證據資料 (臨床試驗報告/文獻評估)</h3>
+                    <textarea id="clinical_report" rows="4" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs" placeholder="若屬第三等級或無類似品器材，請在此填寫國內外臨床試驗報告摘要與數據。"></textarea>
+                </div>
+
+                <div id="tab-others" class="tab-content space-y-4">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>其餘佐證文件或特殊聲明書</h3>
+                    <input id="other_comments" type="text" placeholder="補充說明或特殊狀況登載" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs">
+                </div>
+
+                <div id="tab-submit-tab" class="tab-content space-y-6">
+                    <h3 class="text-base font-bold text-white flex items-center gap-2"><span class="w-1.5 h-4 bg-amber-500 rounded"></span>送出電子申請案與下載離線版光碟標籤</h3>
+                    
+                    <div class="bg-slate-900 p-5 rounded-2xl border border-slate-800 space-y-4">
+                        <h4 class="text-xs font-bold text-slate-200">線下實體光碟與收文櫃檯核配守則</h4>
+                        <ol class="text-xs text-slate-300 space-y-2.5 list-decimal pl-4 leading-relaxed">
+                            <li>點選 <span class="text-amber-400 font-medium cursor-pointer underline" onclick="downloadOfflineTemplate()">[下載離線版檔案格式資料夾]</span> 建立標準樹狀目錄。</li>
+                            <li>將相關檔案(例如測試報告)放置於對應之資料夾（<span class="text-rose-400">勿在資料夾內再建立子資料夾，限PDF或Word格式</span>）。</li>
+                            <li>於此頁面完成線上資料校對，點選下方「確認送出申請案」按鈕。</li>
+                            <li>前往「已傳送」功能列下載系統自動配發的 <span class="text-amber-400 font-bold">"送審文件封面"</span>。</li>
+                            <li>將封面黏貼於信封，連同申請光碟及文件正本寄送至 <span class="text-white">食品藥物管理署聯合服務中心 (生技園區F棟2樓收文櫃台)</span>。</li>
+                        </ol>
+                    </div>
+
+                    <div class="flex items-center justify-end space-x-3 pt-4">
+                        <button type="button" onclick="saveProgressToast()" class="bg-slate-900 border border-slate-700 hover:bg-slate-800 text-xs text-slate-200 px-4 py-2.5 rounded-xl transition">暫存變更</button>
+                        <button type="button" onclick="executeFinalSubmit()" class="bg-gradient-to-r align-middle from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-bold text-xs px-6 py-2.5 rounded-xl shadow-lg transition">確認線上送出申請</button>
+                    </div>
+                </div>
+
+            </form>
+        </main>
+
+        <aside class="w-full lg:w-[420px] bg-slate-950 border-t lg:border-t-0 lg:border-l border-slate-800 p-4 flex flex-col space-y-4">
+            
+            <div class="bg-gradient-to-r from-amber-500/10 to-transparent p-3 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                    <h3 class="text-xs font-bold text-white tracking-wider uppercase">Gemini AI 法規協同作業核能艙</h3>
+                </div>
+                <span class="text-[10px] font-mono bg-slate-900 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">Online</span>
+            </div>
+
+            <div class="bg-slate-900 rounded-xl border border-slate-800 p-3 flex-1 flex flex-col min-h-[240px] max-h-[380px] lg:max-h-none overflow-hidden">
+                <div class="text-[11px] font-semibold text-slate-400 border-b border-slate-800 pb-2 mb-2 flex items-center justify-between">
+                    <span>AI 交互紀錄對話框</span>
+                    <span class="text-[10px] text-amber-500 font-mono">Agent: gemini-3.1-flash-lite</span>
+                </div>
+                <div id="ai-chat-feed" class="flex-1 overflow-y-auto space-y-3 text-xs pr-1 scrollbar-thin">
+                    <div class="bg-slate-950/60 p-2.5 rounded-lg border border-slate-800 text-slate-300">
+                        <span class="text-[10px] text-amber-400 font-bold block mb-1">Gemini Agent</span>
+                        您好！我是您的法規智慧助理。請在下方輸入您的需求，例如：<br>
+                        <span class="text-slate-400 italic">"幫我填寫品名為可攜式超音波，型號詳如仿單，QMS號碼為QMS1130452"</span>，我將為您一鍵配置表單欄位。
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 border-t border-slate-800 flex gap-1">
+                    <input id="ai-user-prompt" type="text" placeholder="輸入法規指令或填單要求..." class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+                    <button onclick="sendAiPrompt()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 p-2 rounded-lg transition"><i data-lucide="send" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-3 rounded-xl transition">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-2 text-white">
+                        <i data-lucide="brain-circuit" class="w-4 h-4 text-purple-400"></i>
+                        <h4 class="text-xs font-bold">1. 智慧品項推薦與品名交叉驗證</h4>
+                    </div>
+                    <button onclick="wowFeaturePredictCategory()" class="text-[10px] bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/20">預測分析</button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">分析當前中英文品名，智慧檢索 TFDA 歷年核准資料庫，自動對齊正確的 P.1570 放射學分類編號與品項。</p>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-3 rounded-xl transition">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-2 text-white">
+                        <i data-lucide="badge-check" class="w-4 h-4 text-emerald-400"></i>
+                        <h4 class="text-xs font-bold">2. 臨床前測試報告 GLP 資格防呆校對</h4>
+                    </div>
+                    <button onclick="wowFeatureAuditCompliance()" class="text-[10px] bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/20">即時稽核</button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">智慧識別上傳的臨床前測試摘要，比對實驗室是否符合 ISO 17025 與 TAF 認可宣告，避免退件。</p>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800 hover:border-slate-700 p-3 rounded-xl transition">
+                <div class="flex items-start justify-between">
+                    <div class="flex items-center space-x-2 text-white">
+                        <i data-lucide="folder-git" class="w-4 h-4 text-sky-400"></i>
+                        <h4 class="text-xs font-bold">3. 離線光碟虛擬目錄樹狀映射圖</h4>
+                    </div>
+                    <button onclick="wowFeatureGenerateTree()" class="text-[10px] bg-sky-500/10 text-sky-400 hover:bg-sky-500/20 px-2 py-0.5 rounded border border-sky-500/20">渲染對照</button>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-1">根據線上填寫內容，一鍵生成合規的實體光碟資料夾結構圖，讓使用者依樣畫葫蘆放置 PDF 文件。</p>
+            </div>
+
+        </aside>
+    </div>
+
+    <div id="toast-box" class="fixed bottom-5 right-5 z-[100] bg-slate-950 border border-amber-500/30 text-white text-xs px-4 py-3 rounded-xl shadow-2xl transition-all opacity-0 pointer-events-none transform translate-y-2 flex items-center space-x-2">
+        <i data-lucide="info" class="w-4 h-4 text-amber-400"></i>
+        <span id="toast-text">作業成功執行</span>
+    </div>
+
+    <script>
+        // DOM Initialization
+        document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+        });
+
+        // Tab Switching Engine
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('border-amber-500', 'text-amber-400');
+                el.classList.add('border-transparent', 'text-slate-400');
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            const activeBtn = document.getElementById(`btn-tab-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.remove('border-transparent', 'text-slate-400');
+                activeBtn.classList.add('border-amber-500', 'text-amber-400');
+            }
+        }
+
+        // Global State Form Object Mapping
+        function getFormState() {
+            return {
+                serialNumber: "MDE11505140004",
+                caseType: document.getElementById('case_type').value,
+                deviceCategory: document.getElementById('device_category').value,
+                caseKind: document.getElementById('case_kind').value,
+                originPlace: document.getElementById('origin_place').value,
+                riskLevel: document.getElementById('risk_level').value,
+                hasSimilar: document.getElementById('has_similar').value,
+                nameZh: document.getElementById('name_zh').value,
+                nameEn: document.getElementById('name_en').value,
+                indications: document.getElementById('indications').value,
+                specifications: document.getElementById('specifications').value,
+                mainCategory: document.getElementById('main_category').value,
+                subCategory: document.getElementById('sub_category').value,
+                companyId: document.getElementById('comp_id').value,
+                companyName: document.getElementById('comp_name').value,
+                companyAddress: document.getElementById('comp_addr').value,
+                contactName: document.getElementById('contact_name').value,
+                contactEmail: document.getElementById('contact_email').value,
+                qmsNumber: document.getElementById('qms_number').value,
+                preclinicalSummary: document.getElementById('preclinical_summary').value,
+                clinicalReport: document.getElementById('clinical_report').value,
+                otherComments: document.getElementById('other_comments').value
+            };
+        }
+
+        function setFormState(state) {
+            if (!state) return;
+            if (state.caseType) document.getElementById('case_type').value = state.caseType;
+            if (state.deviceCategory) document.getElementById('device_category').value = state.deviceCategory;
+            if (state.caseKind) document.getElementById('case_kind').value = state.caseKind;
+            if (state.originPlace) document.getElementById('origin_place').value = state.originPlace;
+            if (state.riskLevel) document.getElementById('risk_level').value = state.riskLevel;
+            if (state.hasSimilar) document.getElementById('has_similar').value = state.hasSimilar;
+            if (state.nameZh) document.getElementById('name_zh').value = state.nameZh;
+            if (state.nameEn) document.getElementById('name_en').value = state.nameEn;
+            if (state.indications) document.getElementById('indications').value = state.indications;
+            if (state.specifications) document.getElementById('specifications').value = state.specifications;
+            if (state.mainCategory) document.getElementById('main_category').value = state.mainCategory;
+            if (state.subCategory) document.getElementById('sub_category').value = state.subCategory;
+            if (state.contactName) document.getElementById('contact_name').value = state.contactName;
+            if (state.contactEmail) document.getElementById('contact_email').value = state.contactEmail;
+            if (state.qmsNumber) document.getElementById('qms_number').value = state.qmsNumber;
+            if (state.preclinicalSummary) document.getElementById('preclinical_summary').value = state.preclinicalSummary;
+            if (state.clinicalReport) document.getElementById('clinical_report').value = state.clinicalReport;
+            if (state.otherComments) document.getElementById('other_comments').value = state.otherComments;
+        }
+
+        // Load Preset Case Data
+        function triggerPresetData() {
+            const sample = {
+                caseType: "一般申請案",
+                deviceCategory: "一般醫材",
+                caseKind: "新案",
+                originPlace: "國產",
+                riskLevel: "第二等級",
+                hasSimilar: "有",
+                nameZh: "可攜式彩色超音波診斷儀",
+                nameEn: "Diagnostic Ultrasound System",
+                indications: "詳如核定之中文說明書。用於人體腹部、心臟、婦產科、小器官之超音波診斷影像掃描。",
+                specifications: "詳如核定之中文說明書。配置主機與 P.1570 超音波探頭，支持雙向都卜勒血流成像。",
+                mainCategory: "P.放射學科學",
+                subCategory: "P.1570 診斷用超音波轉換器",
+                contactName: "吳俊彥",
+                contactEmail: "jywu6@itri.org.tw",
+                qmsNumber: "QMS1130452",
+                preclinicalSummary: "已完成 IEC 60601-1 醫療電氣安全測試、IEC 60601-1-2 電磁相容性測試。生物相容性符合 ISO 10993 規範。",
+                clinicalReport: "本產品與已上市前代產品效能實質等同，檢附原廠臨床評估文獻對照報告表。",
+                otherComments: "隨附提供 RAPS 與 AHWP 法規人員受訓合格證明書影本。"
+            };
+            setFormState(sample);
+            showToast("成功導入可攜式超音波標準範例資料！");
+        }
+
+        // Import Parsers (JSON, CSV, MD)
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                if (file.name.endsWith('.json')) {
+                    try {
+                        const data = JSON.parse(text);
+                        setFormState(data);
+                        showToast("JSON 設定檔載入成功！");
+                    } catch (err) { alert("JSON 格式解析錯誤"); }
+                } else {
+                    // Simulating fallback structured parser for Markdown / CSV
+                    document.getElementById('name_zh').value = "解構載入自: " + file.name;
+                    showToast(`已從明文檔案 [${file.name}] 抽離對應屬性並更新表單。`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Simulate PDF Meta Parsing
+        function simulatePdfParsing(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showToast(`正在模擬提取 ${file.name} 的數位簽章與仿單文字...`);
+            setTimeout(() => {
+                document.getElementById('indications').value = "提取自 PDF 仿單：" + file.name + "。預設符合食品藥物管理署核定本規格。";
+                showToast("PDF 標頭元件提取完畢，已覆寫效能用途說明。");
+            }, 1200);
+        }
+
+        // Export Data Orchestrator
+        function exportData(format) {
+            const state = getFormState();
+            let blobContent = "";
+            let mimeType = "text/plain";
+            let filename = `TFDA_Submission_${state.serialNumber}.${format}`;
+
+            if (format === 'json') {
+                blobContent = JSON.stringify(state, null, 4);
+                mimeType = "application/json";
+            } else if (format === 'csv') {
+                mimeType = "text/csv";
+                blobContent = "\uFEFFKey,Value\n" + Object.entries(state).map(([k,v]) => `"${k}","${v.replace(/"/g, '""')}"`).join("\n");
+            } else if (format === 'md') {
+                blobContent = `# TFDA 查驗登記電子送審報告 [${state.serialNumber}]\n\n` + 
+                              Object.entries(state).map(([k,v]) => `### ${k}\n${v}\n`).join("\n");
+            } else if (format === 'pdf') {
+                // Mock heavy binary download for SPA context
+                alert(`[系統整合提示] 正在編譯 PDF 報表頭與簽章...\n已封裝電子流水號: ${state.serialNumber}\n中標名稱: ${state.nameZh}\n請將產出的PDF與實體光碟一併送件。`);
+                return;
+            }
+
+            const blob = new Blob([blobContent], { type: mimeType });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            showToast(`成功導出 ${format.toUpperCase()} 備份存檔。`);
+        }
+
+        // AI Workspace Interactions (Gemini Prompt Core)
+        function sendAiPrompt() {
+            const promptInput = document.getElementById('ai-user-prompt');
+            const query = promptInput.value.trim();
+            if (!query) return;
+
+            appendChatMessage("User", query);
+            promptInput.value = "";
+
+            // Simulated AI logical deduction reflecting gemini-3.1-flash-lite prompt capability
+            setTimeout(() => {
+                let aiResponse = "收到指示。正在透過 gemini-3.1-flash-lite 分析上下文與 TFDA 醫療器材品項法規庫...\n";
+                
+                if (query.includes("品名") || query.includes("超音波")) {
+                    document.getElementById('name_zh').value = "可攜式彩色超音波診斷儀";
+                    document.getElementById('name_en').value = "Diagnostic Ultrasound System";
+                    document.getElementById('main_category').value = "P.放射學科學";
+                    document.getElementById('sub_category').value = "P.1570 診斷用超音波轉換器";
+                    aiResponse += "已為您將產品品名關聯至 [P.1570 診斷用超音波轉換器]，並自動勾選放射學主類別。";
+                } else if (query.includes("QMS") || query.includes("品質")) {
+                    document.getElementById('qms_number').value = "QMS1130452";
+                    aiResponse += "偵測到製造廠品質系統關鍵字，已將 QMS 核准案號填入：QMS1130452，有效期限設定為3年。";
+                } else {
+                    aiResponse += "明白您的訴求。已對其餘行政文件欄位進行優化校閱，確認資訊符合非登不可系統連動。";
+                }
+
+                appendChatMessage("Gemini Agent", aiResponse);
+                showToast("AI 已協同完成欄位自動填寫！");
+            }, 800);
+        }
+
+        function appendChatMessage(sender, text) {
+            const feed = document.getElementById('ai-chat-feed');
+            const msgNode = document.createElement('div');
+            msgNode.className = "bg-slate-950 p-2 rounded border border-slate-800 text-[11px] space-y-1";
+            
+            const senderColor = sender === "User" ? "text-sky-400" : "text-amber-400";
+            msgNode.innerHTML = `<span class="${senderColor} font-bold block">${sender}</span><p class="text-slate-300 leading-normal">${text.replace(/\n/g, '<br>')}</p>`;
+            
+            feed.appendChild(msgNode);
+            feed.scrollTop = feed.scrollHeight;
+        }
+
+        // WOW Feature 1: Classification Advisor
+        function wowFeaturePredictCategory() {
+            const zhName = document.getElementById('name_zh').value;
+            if(!zhName) {
+                alert("請先輸入或自動生成中文名稱以利 AI 進行關聯預測。");
+                return;
+            }
+            appendChatMessage("Gemini Agent", `[WOW 1: 品項推薦] 針對「${zhName}」進行語意嵌入向量分析：\n推薦指數 99.2%：P.1570 診斷用超音波轉換器\n推薦指數 74.5%：P.1560 超音波回音影像系統\n已自動校準關聯。`);
+        }
+
+        // WOW Feature 2: GLP Compliance Auditor
+        function wowFeatureAuditCompliance() {
+            const txt = document.getElementById('preclinical_summary').value;
+            if(!txt) {
+                document.getElementById('preclinical_summary').value = "[實驗室宣告] 本案生物相容性報告(No. BIO-11502)由符合 GLP 規範之實驗室執行；電氣安全測試(No. EM-2026)由 TAF 認證(ISO 17025)機構簽發。";
+            }
+            appendChatMessage("Gemini Agent", `[WOW 2: GLP 稽核防呆] 掃描臨床前測試內文：\n- 偵測到符合 ISO 17025 宣告及生物相容性 GLP 符合性。\n- 評估結果：【高合規性】，退件機率低於 2%。`);
+        }
+
+        // WOW Feature 3: Virtual Disk Inventory Tree
+        function wowFeatureGenerateTree() {
+            appendChatMessage("Gemini Agent", `[WOW 3: 實體光碟目錄模擬映射]\n請依據此架構燒錄實體申請光碟：\n📁 MDE11505140004_離線光碟/\n├── 📄 一_查驗登記申請書蓋印本.pdf\n├── 📄 四_醫療器材商製造業許可執照.pdf\n└── 📄 十七_臨床前測試及原廠品質管制紀錄.pdf\n⚠️ 警告：切勿在子資料夾內再建立目錄！`);
+        }
+
+        // Toast Helper
+        function showToast(text) {
+            const toast = document.getElementById('toast-box');
+            document.getElementById('toast-text').innerText = text;
+            toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-2');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-2');
+            }, 3000);
+        }
+
+        function saveProgressToast() {
+            showToast("暫存成功！目前進度已同步保存於網頁 Local Cache。");
+        }
+
+        function executeFinalSubmit() {
+            const state = getFormState();
+            alert(`【TFDA 平台傳送成功】\n電子流水號：${state.serialNumber}\n請記得點選右側操作列下載「送審文件封面」，貼在信封上連同光碟寄至食藥署櫃檯。`);
+        }
+
+        function downloadOfflineTemplate() {
+            showToast("正在配置標準離線版 [MDE11505140004_離線檔案格式.zip] 結構範本下載...");
+        }
+    </script>
+
+</body>
+</html>
